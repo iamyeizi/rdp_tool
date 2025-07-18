@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 
 Write-Host ""
-Write-Host "🔴 Iniciando RDP Tool..." -ForegroundColor Yellow
+Write-Host "🔴 Iniciando Itool..." -ForegroundColor Yellow
 Write-Host ""
 
 # Detectar si estamos en el directorio raíz y navegar a la carpeta correcta
@@ -103,7 +103,7 @@ Write-Host "Presione Ctrl+C para detener el servidor" -ForegroundColor Yellow
 Write-Host ""
 
 # Ejecutar el servidor usando pipenv
-pipenv run python rdp.py
+pipenv run python itool.py
 
 Write-Host ""
 Write-Host "Servidor detenido." -ForegroundColor Yellow
