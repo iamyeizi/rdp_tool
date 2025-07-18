@@ -37,6 +37,7 @@ pip-log.txt
 pip-delete-this-directory.txt
 itool.log
 logs/
+.venv_ok
 
 # Unit test / coverage reports
 htmlcov/
