@@ -661,7 +661,8 @@ class ItoolApp(tk.Tk):
 
         # Generar nombre único para el archivo BAT
         unique_id = uuid.uuid4().hex[:8]
-        bat_filename = f"connect_ssh_{unique_id}.bat"
+        temp_dir = tempfile.gettempdir()
+        bat_filename = os.path.join(temp_dir, f"connect_ssh_{unique_id}.bat")
 
         # Contenido del BAT
         bat_content = f"""@echo off
