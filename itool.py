@@ -657,12 +657,30 @@ class ItoolApp(tk.Tk):
 
         ip = pc.get('ip', '')
         usuario = pc.get('usuario', 'admin')
+        contrasenia = pc.get('contrasenia', '')
 
-        # SSH simple - sin título problemático
-        comando = [
-            'cmd.exe', '/c',
-            f'start cmd /k ssh {usuario}@{ip}'
-        ]
+        # Generar nombre único para el archivo BAT
+        unique_id = uuid.uuid4().hex[:8]
+        bat_filename = f"connect_ssh_{unique_id}.bat"
+
+        # Contenido del BAT
+        bat_content = f"""@echo off
+    chcp 65001 > nul
+    echo.
+    echo CONTRASEÑA: {contrasenia}
+    echo.
+    ssh {usuario}@{ip} -p {ssh_port}
+    echo.
+    pause
+    del "%~f0"
+    """
+
+        # Guardar archivo BAT
+        with open(bat_filename, "w", encoding="utf-8") as f:
+            f.write(bat_content)
+
+        # Ejecutar en nueva ventana CMD
+        comando = ["cmd.exe", "/c", f"start cmd /k {bat_filename}"]
 
         subprocess.Popen(comando)
 
