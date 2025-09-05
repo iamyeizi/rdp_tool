@@ -139,6 +139,8 @@ celerybeat.pid
 
 # Environments
 .env
+!credential.example.json
+credential.json
 .envrc
 .venv
 env/
