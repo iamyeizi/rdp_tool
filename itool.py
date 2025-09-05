@@ -1,3 +1,4 @@
+import tempfile
 import tkinter as tk
 from tkinter import ttk
 import gspread
@@ -6,6 +7,7 @@ from pythonping import ping
 import threading
 import subprocess
 import os
+import uuid
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import ipaddress
@@ -31,10 +33,14 @@ logging.getLogger().addHandler(console_handler)
 # --- Configuración Google Sheets ---
 SCOPE = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
-CREDS = ServiceAccountCredentials.from_json_keyfile_name(
-    os.path.join(os.path.expanduser("~"), '.gsheet-creds.json'), SCOPE)
+script_dir = os.path.dirname(os.path.abspath(__file__))
+credential_path = os.path.join(script_dir, 'credential.json')
+CREDS = ServiceAccountCredentials.from_json_keyfile_name(credential_path, SCOPE)
 gc = gspread.authorize(CREDS)
 sheet = gc.open('bd_pcs').sheet1  # Cambia por el nombre de tu sheet
+
+# --- Variables globales ---
+ssh_port = 49151
 
 # --- Optimización de la lectura de Google Sheets ---
 def get_pc_list():
@@ -129,7 +135,7 @@ async def async_is_port_open(ip, port):
             return False
 
 async def update_ssh_buttons_async(buttons, app_instance):
-    """Actualiza los botones SSH según la disponibilidad del puerto 22."""
+    """Actualiza los botones SSH según la disponibilidad del puerto."""
     if not buttons:
         return
 
@@ -144,8 +150,13 @@ async def update_ssh_buttons_async(buttons, app_instance):
             # Usar resultado del cache
             cached_results.append((button, app_instance.ssh_port_cache[ip]))
         else:
-            # Necesita verificación
-            tasks.append((button, ip, async_is_port_open(ip, 22)))
+            if ip == "192.168.3.220" or ip == "192.168.3.143" or ip == "192.168.3.235":
+                current_ssh_port = 22
+            elif ip == "192.168.3.53":
+                current_ssh_port = 16166
+            else:
+                current_ssh_port = ssh_port
+            tasks.append((button, ip, async_is_port_open(ip, current_ssh_port)))
 
     # Ejecutar solo las verificaciones necesarias
     if tasks:
@@ -227,7 +238,7 @@ class ItoolApp(tk.Tk):
 
         # Cache para resultados de ping y puertos
         self.ping_cache = {}       # IP -> bool (ping result)
-        self.ssh_port_cache = {}   # IP -> bool (port 22)
+        self.ssh_port_cache = {}   # IP -> bool (port ssh_port)
         self.rdp_port_cache = {}   # IP -> bool (port 3389)
         self.cache_timeout = 30    # Segundos antes de invalidar cache
         self.last_check_time = {}  # IP -> timestamp
@@ -651,15 +662,21 @@ class ItoolApp(tk.Tk):
         ])).start()
 
     def connect_ssh(self, pc):
-        """Conecta por SSH"""
         if not pc or not pc.get('ip', ''):
             return
 
         ip = pc.get('ip', '')
-        usuario = pc.get('usuario', 'admin')
+        usuario = pc.get('usuario', '')
         contrasenia = pc.get('contrasenia', '')
 
-        # Generar nombre único para el archivo BAT
+        # Determinar el puerto SSH según la IP
+        if ip == "192.168.3.220" or ip == "192.168.3.143" or ip == "192.168.3.235":
+            current_ssh_port = 22
+        elif ip == "192.168.3.53":
+            current_ssh_port = 16166
+        else:
+            current_ssh_port = ssh_port
+
         unique_id = uuid.uuid4().hex[:8]
         temp_dir = tempfile.gettempdir()
         bat_filename = os.path.join(temp_dir, f"connect_ssh_{unique_id}.bat")
@@ -670,7 +687,7 @@ class ItoolApp(tk.Tk):
     echo.
     echo CONTRASEÑA: {contrasenia}
     echo.
-    ssh {usuario}@{ip} -p {ssh_port}
+    ssh {usuario}@{ip} -p {current_ssh_port}
     echo.
     pause
     del "%~f0"
