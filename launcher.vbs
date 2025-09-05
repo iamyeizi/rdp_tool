@@ -5,7 +5,7 @@ Set oShell = CreateObject("WScript.Shell")
 ' Rutas
 currentFolder = fso.GetParentFolderName(WScript.ScriptFullName)
 venvMarker = currentFolder & "\.venv_ok"
-agentScript = currentFolder & "\itool.py"
+agentScript = currentFolder & "\main.py"
 requirements = currentFolder & "\requirements.txt"
 
 ' Instalar dependencias si no están
@@ -15,12 +15,12 @@ If Not fso.FileExists(venvMarker) Then
     WshShell.Run cmd, 1, True
 End If
 
-' Cerrar itool.py si ya esta corriendo
+' Cerrar main.py si ya esta corriendo
 Set objWMI = GetObject("winmgmts:\\.\root\cimv2")
 Set procesos = objWMI.ExecQuery("SELECT * FROM Win32_Process WHERE Name = 'python.exe'")
 
 For Each proceso In procesos
-    If InStr(LCase(proceso.CommandLine), "itool.py") > 0 Then
+    If InStr(LCase(proceso.CommandLine), "main.py") > 0 Then
         proceso.Terminate()
     End If
 Next

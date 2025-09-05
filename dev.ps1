@@ -103,7 +103,7 @@ Write-Host "Presione Ctrl+C para detener el servidor" -ForegroundColor Yellow
 Write-Host ""
 
 # Ejecutar el servidor usando pipenv
-pipenv run python itool.py
+pipenv run python main.py
 
 Write-Host ""
 Write-Host "Servidor detenido." -ForegroundColor Yellow

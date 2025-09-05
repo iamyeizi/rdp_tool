@@ -9,6 +9,4 @@ oauth2client = "*"
 pythonping = "*"
 
 [dev-packages]
-
-[requires]
-python_version = "3.13"
+pipreqs = "*"
