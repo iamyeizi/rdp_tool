@@ -17,10 +17,19 @@ from functools import partial
 import platform
 import shutil
 import shlex
+import sys
 
 # Configuración de logging
+try:
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, 'itool.log')
+except Exception:
+    # Fallback al archivo en el cwd si no se puede crear la carpeta
+    log_file = 'itool.log'
+
 logging.basicConfig(
-    filename='itool.log',
+    filename=log_file,
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     filemode='a'
@@ -33,11 +42,21 @@ formatter = logging.Formatter('%(levelname)s - %(message)s')
 console_handler.setFormatter(formatter)
 logging.getLogger().addHandler(console_handler)
 
+# --- Helpers para rutas de recursos (compatible con PyInstaller) ---
+def _resource_base_dir():
+    try:
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            return sys._MEIPASS  # Carpeta temporal creada por PyInstaller
+    except Exception:
+        pass
+    return os.path.dirname(os.path.abspath(__file__))
+
+BASE_DIR = _resource_base_dir()
+
 # --- Configuración Google Sheets ---
 SCOPE = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
-script_dir = os.path.dirname(os.path.abspath(__file__))
-credential_path = os.path.join(script_dir, 'credential.json')
+credential_path = os.path.join(BASE_DIR, 'credential.json')
 CREDS = ServiceAccountCredentials.from_json_keyfile_name(credential_path, SCOPE)
 gc = gspread.authorize(CREDS)
 sheet = gc.open('bd_pcs').sheet1  # Cambia por el nombre de tu sheet
@@ -296,6 +315,10 @@ class iToolApp(tk.Tk):
         self.title("iTool")
         # Plataforma
         self.system = platform.system().lower()  # 'windows', 'linux', 'darwin'
+        # Windows: fijar AppUserModelID para que la barra de tareas agrupe/identifique correctamente
+        self._set_windows_app_id()
+        # Icono de la aplicación (utils/app.ico para Windows, utils/app.png para Linux/macOS)
+        self._set_app_icon()
         # Estructuras de datos
         self.pc_list = []
         self.filtered_list = []
@@ -321,6 +344,63 @@ class iToolApp(tk.Tk):
         self.create_widgets()
         self.refresh_data()
         self.update_leds()
+
+    def _set_app_icon(self):
+        """Configura el icono de la ventana según el sistema operativo.
+
+        - Windows: intenta utils/app.ico (iconbitmap). Fallback: utils/app.png via iconphoto.
+        - Linux/macOS: intenta utils/app.png via iconphoto. Fallback: utils/app.ico via iconphoto.
+        No falla si no encuentra archivos; solo loggea un warning.
+        """
+        try:
+            utils_dir = os.path.join(BASE_DIR, 'utils')
+            ico_path = os.path.join(utils_dir, 'app.ico')
+            png_path = os.path.join(utils_dir, 'app.png')
+
+            if self.system == 'windows':
+                if os.path.exists(ico_path):
+                    try:
+                        self.iconbitmap(ico_path)
+                        return
+                    except Exception as e:
+                        logging.debug(f"iconbitmap con ICO falló: {e}")
+                if os.path.exists(png_path):
+                    try:
+                        self.iconphoto(True, tk.PhotoImage(file=png_path))
+                        return
+                    except Exception as e:
+                        logging.debug(f"iconphoto con PNG falló: {e}")
+            else:
+                if os.path.exists(png_path):
+                    try:
+                        self.iconphoto(True, tk.PhotoImage(file=png_path))
+                        return
+                    except Exception as e:
+                        logging.debug(f"iconphoto con PNG falló: {e}")
+                if os.path.exists(ico_path):
+                    try:
+                        self.iconphoto(True, tk.PhotoImage(file=ico_path))
+                        return
+                    except Exception as e:
+                        logging.debug(f"iconphoto con ICO falló: {e}")
+
+            logging.warning("Icono de app no encontrado. Ubicá utils/app.ico (Windows) o utils/app.png (Linux/macOS).")
+        except Exception as e:
+            logging.debug(f"No se pudo establecer icono: {e}")
+
+    def _set_windows_app_id(self):
+        """Establece el AppUserModelID en Windows para mejorar el ícono y el agrupado en la taskbar.
+
+        Nota: esto no cambia el ícono de la taskbar si se ejecuta como .py con python.exe; para que la taskbar
+        muestre tu ícono personalizado, empaquetá a .exe con tu ícono o usá un acceso directo con ícono.
+        """
+        try:
+            if self.system == 'windows':
+                import ctypes
+                app_id = u"rdp_tool.iTool"
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+        except Exception as e:
+            logging.debug(f"No se pudo fijar AppUserModelID: {e}")
 
     def create_widgets(self):
         # Frame principal para organizar la interfaz
@@ -736,10 +816,23 @@ class iToolApp(tk.Tk):
                 logging.error("cmdkey no encontrado")
 
             try:
-                with open('template.rdp', 'r', encoding='utf-16') as f:
-                    lines = f.readlines()
+                template_path = os.path.join(BASE_DIR, 'utils', 'template.rdp')
+                lines = None
+                for enc in ('utf-16', 'utf-8-sig', None):
+                    try:
+                        if enc is None:
+                            with open(template_path, 'r') as f:
+                                lines = f.readlines()
+                        else:
+                            with open(template_path, 'r', encoding=enc) as f:
+                                lines = f.readlines()
+                        break
+                    except Exception:
+                        continue
+                if lines is None:
+                    raise FileNotFoundError('No se pudo leer utils/template.rdp con las codificaciones esperadas')
             except FileNotFoundError:
-                logging.error("Archivo template.rdp no encontrado")
+                logging.error("Archivo utils/template.rdp no encontrado")
                 return
 
             new_lines = []
