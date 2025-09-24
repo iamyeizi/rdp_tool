@@ -297,16 +297,16 @@ async def update_rdp_buttons_async(buttons, app_instance):
         if port_open:
             button.config(state="normal")
             # Restaurar texto original según el botón
-            if "Espejo" in button.cget('text') or button.cget('text') == "✗":
-                button.config(text="Espejo")
-            elif "Normal" in button.cget('text') or button.cget('text') == "✗":
-                button.config(text="Normal")
+            if "Mirroring" in button.cget('text') or button.cget('text') == "✗":
+                button.config(text="Mirroring")
+            elif "RDP" in button.cget('text') or button.cget('text') == "✗":
+                button.config(text="RDP")
         else:
             button.config(state="disabled")
             # Agregar ✗ según el tipo de botón
-            if "Espejo" in button.cget('text') or button.cget('text') == "✗":
+            if "Mirroring" in button.cget('text') or button.cget('text') == "✗":
                 button.config(text="✗")
-            elif "Normal" in button.cget('text') or button.cget('text') == "✗":
+            elif "RDP" in button.cget('text') or button.cget('text') == "✗":
                 button.config(text="✗")
 
 class iToolApp(tk.Tk):
@@ -354,37 +354,49 @@ class iToolApp(tk.Tk):
         """
         try:
             utils_dir = os.path.join(BASE_DIR, 'utils')
-            ico_path = os.path.join(utils_dir, 'app.ico')
-            png_path = os.path.join(utils_dir, 'app.png')
+            ico_candidates = [
+                os.path.join(utils_dir, 'app.ico'),
+                os.path.join(utils_dir, 'icon.ico'),
+            ]
+            png_candidates = [
+                os.path.join(utils_dir, 'app.png'),
+                os.path.join(utils_dir, 'icon.png'),
+            ]
 
             if self.system == 'windows':
-                if os.path.exists(ico_path):
-                    try:
-                        self.iconbitmap(ico_path)
-                        return
-                    except Exception as e:
-                        logging.debug(f"iconbitmap con ICO falló: {e}")
-                if os.path.exists(png_path):
-                    try:
-                        self.iconphoto(True, tk.PhotoImage(file=png_path))
-                        return
-                    except Exception as e:
-                        logging.debug(f"iconphoto con PNG falló: {e}")
+                # En Windows, preferir .ico para iconbitmap (ícono de ventana y taskbar en exe empaquetado)
+                for p in ico_candidates:
+                    if os.path.exists(p):
+                        try:
+                            self.iconbitmap(p)
+                            return
+                        except Exception as e:
+                            logging.debug(f"iconbitmap con ICO falló: {e}")
+                for p in png_candidates:
+                    if os.path.exists(p):
+                        try:
+                            self.iconphoto(True, tk.PhotoImage(file=p))
+                            return
+                        except Exception as e:
+                            logging.debug(f"iconphoto con PNG falló: {e}")
             else:
-                if os.path.exists(png_path):
-                    try:
-                        self.iconphoto(True, tk.PhotoImage(file=png_path))
-                        return
-                    except Exception as e:
-                        logging.debug(f"iconphoto con PNG falló: {e}")
-                if os.path.exists(ico_path):
-                    try:
-                        self.iconphoto(True, tk.PhotoImage(file=ico_path))
-                        return
-                    except Exception as e:
-                        logging.debug(f"iconphoto con ICO falló: {e}")
+                # En Linux/macOS, preferir PNG pero hacer fallback a ICO si es lo único
+                for p in png_candidates:
+                    if os.path.exists(p):
+                        try:
+                            self.iconphoto(True, tk.PhotoImage(file=p))
+                            return
+                        except Exception as e:
+                            logging.debug(f"iconphoto con PNG falló: {e}")
+                for p in ico_candidates:
+                    if os.path.exists(p):
+                        try:
+                            self.iconphoto(True, tk.PhotoImage(file=p))
+                            return
+                        except Exception as e:
+                            logging.debug(f"iconphoto con ICO falló: {e}")
 
-            logging.warning("Icono de app no encontrado. Ubicá utils/app.ico (Windows) o utils/app.png (Linux/macOS).")
+            logging.warning("Icono de app no encontrado. Ubicá utils/app.ico (Windows) o utils/app.png (Linux/macOS). También se aceptan utils/icon.ico y utils/icon.png.")
         except Exception as e:
             logging.debug(f"No se pudo establecer icono: {e}")
 
@@ -397,7 +409,7 @@ class iToolApp(tk.Tk):
         try:
             if self.system == 'windows':
                 import ctypes
-                app_id = u"rdp_tool.iTool"
+                app_id = u"com.itool.app"
                 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
         except Exception as e:
             logging.debug(f"No se pudo fijar AppUserModelID: {e}")
@@ -475,7 +487,7 @@ class iToolApp(tk.Tk):
         # Limpiar headers existentes
         for widget in self.headers_frame.winfo_children():
             widget.destroy()
-        headers = ["Titular", "Host", "IP", "Ping", "Espejo", "Normal", "SSH"]
+        headers = ["Titular", "Host", "IP", "Ping", "Mirroring", "RDP", "SSH"]
         header_keys = ["titular", "hostname", "ip", "", "", "", ""]  # Keys para ordenamiento
 
         for col, (h, key) in enumerate(zip(headers, header_keys)):
@@ -613,7 +625,7 @@ class iToolApp(tk.Tk):
 
     def calculate_column_widths(self):
         """Calcula el ancho óptimo para cada columna basado en su contenido"""
-        headers = ["Titular", "Host", "IP", "Ping", "Espejo", "Normal", "SSH"]
+        headers = ["Titular", "Host", "IP", "Ping", "Mirroring", "RDP", "SSH"]
         column_widths = []
 
         for col, header in enumerate(headers):
@@ -684,8 +696,8 @@ class iToolApp(tk.Tk):
                           bg='white' if row % 2 == 0 else '#f0f0f0')
             led.grid(row=row, column=3, padx=2, sticky='nsew')
             self.leds.append((led, pc.get('ip', '')))
-            # Botón Espejo
-            btn_espejo = tk.Button(self.scrollable_frame, text='Espejo',
+            # Botón Mirroring
+            btn_espejo = tk.Button(self.scrollable_frame, text='Mirroring',
                                    command=partial(self.connect_remoto, pc.get('ip', '')))
             btn_espejo.grid(row=row, column=4, padx=2, sticky='nsew')
             self.rdp_buttons.append((btn_espejo, pc.get('ip', '')))  # Trackear para verificar puerto
@@ -693,8 +705,8 @@ class iToolApp(tk.Tk):
             if self.system != 'windows':
                 btn_espejo.config(state='disabled', text='N/A')
 
-            # Botón Normal
-            btn_normal = tk.Button(self.scrollable_frame, text='Normal',
+            # Botón RDP
+            btn_normal = tk.Button(self.scrollable_frame, text='RDP',
                                    command=partial(self.connect_login_remoto, pc))
             btn_normal.grid(row=row, column=5, padx=2, sticky='nsew')
             self.rdp_buttons.append((btn_normal, pc.get('ip', '')))  # Trackear para verificar puerto

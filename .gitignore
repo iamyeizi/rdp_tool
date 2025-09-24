@@ -38,6 +38,8 @@ pip-delete-this-directory.txt
 itool.log
 logs/
 .venv_ok
+build_win.log
+install_linux.log
 
 # Unit test / coverage reports
 htmlcov/

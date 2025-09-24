@@ -7,6 +7,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_DIR="$ROOT_DIR/venv"
 PY="python3"
+LOG_FILE="$ROOT_DIR/install_linux.log"
+
+# Logging a archivo y consola
+rm -f "$LOG_FILE" 2>/dev/null || true
+exec > >(tee -a "$LOG_FILE") 2>&1
 
 log(){ echo -e "[install] $*"; }
 
@@ -82,8 +87,8 @@ if [[ "${1:-}" == "--build" ]]; then
   if [[ -f "$ROOT_DIR/utils/app.ico" ]]; then
     ICON_ARG=( --icon "$ROOT_DIR/utils/app.ico" )
   fi
-  "$VENV_DIR/bin/pyinstaller" --noconfirm --onefile --windowed "${ICON_ARG[@]}" "${ADD_ARGS[@]}" "$ROOT_DIR/main.py"
-  BIN_PATH="$ROOT_DIR/dist/main"
+  "$VENV_DIR/bin/pyinstaller" --noconfirm --onefile --windowed --name itool "${ICON_ARG[@]}" "${ADD_ARGS[@]}" "$ROOT_DIR/main.py"
+  BIN_PATH="$ROOT_DIR/dist/itool"
   if [[ -f "$BIN_PATH" ]]; then
     log "Actualizando .desktop para usar el binario empaquetado..."
     cat > "$DESKTOP_FILE" <<EOF
@@ -100,5 +105,5 @@ EOF
   else
     log "No se encontró $BIN_PATH; el .desktop seguirá apuntando a main.py en venv."
   fi
-  log "EXE/Linux binario disponible en dist/ y .desktop actualizado si corresponde"
+  log "Binario Linux disponible en dist/itool y .desktop actualizado si corresponde"
 fi
