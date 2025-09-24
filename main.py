@@ -65,6 +65,59 @@ def is_valid_ip(ip):
     except ValueError:
         return False
 
+# --- Clave de ordenamiento natural para IPs (IPv4) ---
+def ip_sort_key(value):
+    """Devuelve una tupla numérica para ordenar IPs de forma natural.
+
+    - IPs válidas: (0, oct1, oct2, oct3, oct4)
+    - Vacías/Inválidas: (1, 0, 0, 0, 0)  -> van al final
+    """
+    ip_str = str(value or '').strip()
+    parts = ip_str.split('.')
+    if len(parts) == 4:
+        try:
+            octs = [int(p) for p in parts]
+            if all(0 <= o <= 255 for o in octs):
+                return (0, octs[0], octs[1], octs[2], octs[3])
+        except Exception:
+            pass
+    return (1, 0, 0, 0, 0)
+
+def ip_last_octet_sort_key(value):
+    """Clave de ordenamiento por último octeto (host) para IPs IPv4.
+
+    - IPs válidas: (0, last_octet)
+    - Vacías/Inválidas: (1, 0) -> al final
+    """
+    ip_str = str(value or '').strip()
+    parts = ip_str.split('.')
+    if len(parts) == 4:
+        try:
+            last = int(parts[3])
+            if 0 <= last <= 255:
+                return (0, last)
+        except Exception:
+            pass
+    return (1, 0)
+
+def ip_vlan_host_sort_key(value):
+    """Clave de ordenamiento por VLAN (3er octeto) y host (4to octeto).
+
+    - IPs válidas: (0, vlan, host)
+    - Vacías/Inválidas: (1, 0, 0) -> al final
+    """
+    ip_str = str(value or '').strip()
+    parts = ip_str.split('.')
+    if len(parts) == 4:
+        try:
+            vlan = int(parts[2])
+            host = int(parts[3])
+            if 0 <= vlan <= 255 and 0 <= host <= 255:
+                return (0, vlan, host)
+        except Exception:
+            pass
+    return (1, 0, 0)
+
 # --- Ping asincrónico con manejo de PCs sin IP ---
 async def async_ping(ip):
     if not ip:
@@ -382,17 +435,25 @@ class iToolApp(tk.Tk):
 
         # Ordenar la lista filtrada
         try:
-            self.filtered_list.sort(
-                key=lambda x: str(x.get(column, '')).lower(),
-                reverse=not self.sort_ascending
-            )
+            if column == 'ip':
+                # Ordenar primero por VLAN (3er octeto) y luego por host (4to octeto)
+                self.filtered_list.sort(
+                    key=lambda x: ip_vlan_host_sort_key(x.get('ip', '')),
+                    reverse=not self.sort_ascending
+                )
+            else:
+                self.filtered_list.sort(
+                    key=lambda x: str(x.get(column, '')).lower(),
+                    reverse=not self.sort_ascending
+                )
             logging.debug(f"Lista ordenada por {column}, ascendente: {self.sort_ascending}")
 
             # Actualizar headers para mostrar el indicador de ordenamiento
             self.create_fixed_headers()
 
             # Actualizar la visualización
-            self.update_grid_display()
+            # Optimización: durante ordenamiento evitamos lanzar comprobaciones de red
+            self.update_grid_display(from_sort=True)
 
         except Exception as e:
             logging.error(f"Error al ordenar por {column}: {e}")
@@ -516,7 +577,7 @@ class iToolApp(tk.Tk):
         except Exception as e:
             logging.debug(f"Error al sincronizar anchos de columna: {e}")
 
-    def update_grid_display(self):
+    def update_grid_display(self, from_sort: bool = False):
         """Actualiza la visualización del grid alineada con los headers"""
         logging.info("Actualizando visualización del grid")
         # Limpiar todas las filas existentes
@@ -568,14 +629,15 @@ class iToolApp(tk.Tk):
             # Configurar el peso de cada fila
             self.scrollable_frame.grid_rowconfigure(row, weight=1)
 
-        # Actualizar botones SSH y RDP en segundo plano
-        if self.ssh_buttons:
-            threading.Thread(target=self.update_ssh_buttons_threaded, daemon=True).start()
-        if self.rdp_buttons:
-            threading.Thread(target=self.update_rdp_buttons_threaded, daemon=True).start()
+        # Actualizar botones SSH y RDP en segundo plano (omitir si es solo reordenamiento)
+        if not from_sort:
+            if self.ssh_buttons:
+                threading.Thread(target=self.update_ssh_buttons_threaded, daemon=True).start()
+            if self.rdp_buttons:
+                threading.Thread(target=self.update_rdp_buttons_threaded, daemon=True).start()
 
-        # Solo sincronizar columnas, NO ajustar ventana en cada actualización
-        self.after(100, self.sync_column_widths)
+            # Solo sincronizar columnas, NO ajustar ventana en cada actualización
+            self.after(100, self.sync_column_widths)
 
     def create_grid(self):
         """Inicializa el grid básico"""
