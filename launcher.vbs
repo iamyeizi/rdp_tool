@@ -25,8 +25,5 @@ For Each proceso In procesos
     End If
 Next
 
-' Mostrar notificación
-oShell.Popup "Iniciando programa...", 3, "iTool", 64
-
 ' Ejecutar el programa sin mostrar consola (0 = oculto)
 WshShell.Run "python """ & agentScript & """", 0, False
