@@ -10,7 +10,7 @@ requirements = currentFolder & "\requirements.txt"
 
 ' Instalar dependencias si no están
 If Not fso.FileExists(venvMarker) Then
-    MsgBox "Instalando dependencias, por favor espere...", 64, "Itool"
+    MsgBox "Instalando dependencias, por favor espere...", 64, "iTool"
     cmd = "cmd /c cd /d """ & currentFolder & """ && python -m pip install --upgrade pip && python -m pip install -r requirements.txt && echo ok > .venv_ok"
     WshShell.Run cmd, 1, True
 End If
@@ -26,7 +26,7 @@ For Each proceso In procesos
 Next
 
 ' Mostrar notificación
-oShell.Popup "Iniciando programa...", 3, "Itool", 64
+oShell.Popup "Iniciando programa...", 3, "iTool", 64
 
 ' Ejecutar el programa sin mostrar consola (0 = oculto)
 WshShell.Run "python """ & agentScript & """", 0, False

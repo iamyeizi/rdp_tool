@@ -35,7 +35,7 @@ MANIFEST
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
-it_tool.log
+itool.log
 logs/
 .venv_ok
 

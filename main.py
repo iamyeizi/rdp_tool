@@ -20,7 +20,7 @@ import shlex
 
 # Configuración de logging
 logging.basicConfig(
-    filename='it_tool.log',
+    filename='itool.log',
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     filemode='a'
@@ -237,10 +237,10 @@ async def update_rdp_buttons_async(buttons, app_instance):
             elif "Normal" in button.cget('text') or button.cget('text') == "✗":
                 button.config(text="✗")
 
-class ItoolApp(tk.Tk):
+class iToolApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Itool")
+        self.title("iTool")
         # Plataforma
         self.system = platform.system().lower()  # 'windows', 'linux', 'darwin'
         # Estructuras de datos
@@ -809,6 +809,6 @@ del "%~f0"
         return None
 
 if __name__ == "__main__":
-    logging.info("Iniciando Itool")
-    app = ItoolApp()
+    logging.info("Iniciando iTool")
+    app = iToolApp()
     app.mainloop()

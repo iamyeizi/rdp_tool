@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 
 Write-Host ""
-Write-Host "🔴 Iniciando Itool..." -ForegroundColor Yellow
+Write-Host "🔴 Iniciando iTool..." -ForegroundColor Yellow
 Write-Host ""
 
 # Detectar si estamos en el directorio raíz y navegar a la carpeta correcta
